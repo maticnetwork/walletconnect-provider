@@ -141,7 +141,7 @@ export default class WalletConnectProvider {
           }
 
           // get provided accounts and chainId
-          const { accounts, chainId } = payload.params[0]
+          const { accounts /*, chainId */ } = payload.params[0]
           resolve(accounts)
         })
 
@@ -174,12 +174,18 @@ export default class WalletConnectProvider {
           if (this.showQRCode) {
             // display QR Code modal
             WalletConnectQRCodeModal.open(uri, () => {
+              webconnector = null
+              sessionPromise = null
               this.callbacks.onAbort && this.callbacks.onAbort(uri)
             })
           }
         })
         .then(() => {
           return d
+        })
+        .catch(e => {
+          webconnector = null
+          sessionPromise = null
         })
     }
 

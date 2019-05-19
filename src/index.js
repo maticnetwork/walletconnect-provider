@@ -183,7 +183,7 @@ export default class WalletConnectProvider {
         .then(() => {
           return d
         })
-        .catch(e => {
+        .catch(() => {
           webconnector = null
           sessionPromise = null
         })

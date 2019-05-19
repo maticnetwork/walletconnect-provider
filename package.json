@@ -1,6 +1,6 @@
 {
-  "name": "walletconnect-provider",
-  "version": "0.0.1",
+  "name": "@maticnetwork/walletconnect-provider",
+  "version": "0.0.1-beta.1",
   "description": "Walletconnect provider to connect with Matic Network",
   "main": "dist/walletconnect-provider.node.js",
   "browser": "dist/walletconnect-provider.umd.js",

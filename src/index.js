@@ -305,4 +305,10 @@ export default class WalletConnectProvider {
 
     return false
   }
+
+  disconnect() {
+    if (webconnector && webconnector.connected) {
+      webconnector.killSession()
+    }
+  }
 }

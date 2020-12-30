@@ -1,14 +1,13 @@
-/* eslint-env browser */
-
 import WalletConnect from '@walletconnect/browser'
+import { IJsonRpcResponseSuccess, IErrorCallback } from '@walletconnect/types'
 import { convertNumberToHex } from '@walletconnect/utils'
 import WalletConnectQRCodeModal from '@walletconnect/qrcode-modal'
 
-let XMLHttpRequest = null
-let sessionPromise = null
-let webconnector = null
+let XMLHttpRequest: any = null
+let sessionPromise: Promise<string[]> | null = null
+let webconnector: WalletConnect | null = null
 
-const walletconnectMethods = [
+const walletconnectMethods: string[] = [
   'eth_signTransaction',
   'eth_sendTransaction',
   'eth_sign',
@@ -18,7 +17,7 @@ const walletconnectMethods = [
 ]
 
 // supported methods
-const supportedMethods = ['eth_accounts', ...walletconnectMethods]
+const supportedMethods: string[] = ['eth_accounts', ...walletconnectMethods]
 
 if (typeof window !== 'undefined' && window.XMLHttpRequest) {
   XMLHttpRequest = window.XMLHttpRequest
@@ -26,9 +25,9 @@ if (typeof window !== 'undefined' && window.XMLHttpRequest) {
   throw new Error('XMLHttpRequest not found')
 }
 
-function getCallback(payload, cb) {
-  return function(err, result) {
-    const obj = {}
+function getCallback(payload, cb: IErrorCallback): any {
+  return (err: any, result: any) => {
+    const obj: IJsonRpcResponseSuccess = {} as IJsonRpcResponseSuccess
     const keys = ['id', 'jsonrpc']
     keys.forEach(key => {
       obj[key] = payload[key]
@@ -38,7 +37,29 @@ function getCallback(payload, cb) {
   }
 }
 
+export interface RequestHeader {
+  readonly name: string
+  readonly value: string
+}
+
+export interface Callbacks {
+  onConnect: IErrorCallback
+  onCreate(uri: string): void
+  onAbort(uri: string): void
+  onUpdate: IErrorCallback
+  onDisconnect: IErrorCallback
+}
+
 export default class WalletConnectProvider {
+  private host: string
+  private timeout: number
+  private user: string
+  private password: string
+  private headers: RequestHeader[]
+  private bridgeURL: string
+  private showQRCode: boolean
+  private callbacks: Callbacks
+
   constructor({
     host = 'http://localhost:8545',
     timeout = 0,
@@ -46,20 +67,15 @@ export default class WalletConnectProvider {
     password,
     headers,
     bridgeURL = 'https://bridge.walletconnect.org',
-
     showQRCode = true,
-    callbacks = {},
+    callbacks = {} as Callbacks,
   }) {
     this.host = host
     this.timeout = timeout
     this.user = user
     this.password = password
     this.headers = headers
-
     this.bridgeURL = bridgeURL
-
-    this.connected = false
-
     this.showQRCode = showQRCode
     this.callbacks = callbacks
   }
@@ -71,7 +87,7 @@ export default class WalletConnectProvider {
    * @param {Boolean} true if request should be async
    * @return {XMLHttpRequest} object
    */
-  prepareRequest(isAsync = true) {
+  prepareRequest(isAsync = true): XMLHttpRequest {
     const request = new XMLHttpRequest()
     request.open('POST', this.host, isAsync)
     if (this.user && this.password) {
@@ -99,7 +115,7 @@ export default class WalletConnectProvider {
    * @param {Object} payload
    * @return {Object} result
    */
-  send(payload = {}) {
+  send(payload = {}): any {
     let request = this.prepareRequest(false)
 
     try {
@@ -118,14 +134,14 @@ export default class WalletConnectProvider {
     return result
   }
 
-  async createWebconnector() {
+  async createWebconnector(): Promise<string[]> {
     // create WebConnector
     webconnector = new WalletConnect({
       bridge: this.bridgeURL,
     })
 
     if (!webconnector.connected) {
-      const d = new Promise((resolve, reject) => {
+      const d = new Promise<string[]>((resolve, reject) => {
         // load connect
         webconnector.on('connect', (error, payload) => {
           if (error) {
@@ -161,35 +177,41 @@ export default class WalletConnectProvider {
         })
       })
 
-      return webconnector
-        .createSession()
-        .then(() => {
-          // get uri for QR Code modal
-          const uri = webconnector.uri
+      return new Promise<string[]>((resolve, reject) => {
+        webconnector
+          .createSession()
+          .then(() => {
+            // get uri for QR Code modal
+            const uri = webconnector.uri
 
-          // callback on session create
-          this.callbacks.onCreate && this.callbacks.onCreate(uri)
+            // callback on session create
+            this.callbacks.onCreate && this.callbacks.onCreate(uri)
 
-          // show qr code if asked
-          if (this.showQRCode) {
-            // display QR Code modal
-            WalletConnectQRCodeModal.open(uri, () => {
-              webconnector = null
-              sessionPromise = null
-              this.callbacks.onAbort && this.callbacks.onAbort(uri)
+            // show qr code if asked
+            if (this.showQRCode) {
+              // display QR Code modal
+              WalletConnectQRCodeModal.open(uri, () => {
+                webconnector = null
+                sessionPromise = null
+                this.callbacks.onAbort && this.callbacks.onAbort(uri)
+              })
+            }
+
+            // resolve with d
+            d.then((r) => {
+              resolve(r)
+            }).catch(e => {
+              reject(e)
             })
-          }
-        })
-        .then(() => {
-          return d
-        })
-        .catch(() => {
-          webconnector = null
-          sessionPromise = null
-        })
+          })
+          .catch(() => {
+            webconnector = null
+            sessionPromise = null
+          })
+      })
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<string[]>((resolve, reject) => {
       const _accounts =
         webconnector && webconnector.session && webconnector.session.accounts
       if (_accounts && _accounts.length) {
@@ -245,15 +267,15 @@ export default class WalletConnectProvider {
    * @param {Function} callback triggered on end with (err, result)
    */
   sendAsync(payload, callback) {
-    let p = Promise.resolve()
-    if (supportedMethods.includes(payload.method)) {
+    let p: Promise<string[]> = Promise.resolve([])
+    if (supportedMethods.indexOf(payload.method) > -1) {
       if (!sessionPromise) {
         // create WebConnector
         sessionPromise = this.createWebconnector()
       }
       p = sessionPromise
 
-      if (walletconnectMethods.includes(payload.method)) {
+      if (walletconnectMethods.indexOf(payload.method) > -1) {
         const fn = getCallback(payload, callback)
         if (payload.method === 'eth_sendTransaction') {
           payload.params.push(convertNumberToHex(payload.params[0].chainId))

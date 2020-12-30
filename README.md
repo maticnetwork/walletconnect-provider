@@ -1,5 +1,7 @@
 # walletconnect-provider
 
+![Build Status](https://github.com/maticnetwork/walletconnect-provider/workflows/CI/badge.svg?branch=master)
+
 WalletConnect provider to connect Matic Network
 
 ### Installation
